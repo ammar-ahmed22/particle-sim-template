@@ -28,6 +28,13 @@ export class SpawnParticlesSystem implements System<Renderable, SimulationResour
   }
   update(entities: number[], components: Map<number, Renderable>, ecs: ECS<Renderable, SimulationResource>, resources: SimulationResource): void {
     const { clicked, drag, released } = resources.mouseState;
+    if (!resources.graphics) {
+      throw new Error("graphics is required to render!");
+    }
+    if (clicked && drag) {
+      resources.graphics.line(clicked, drag, { stroke: Color.WHITE });
+    }
+
     if (clicked && released) {
       let vel = Vec2.Subtract(released.clone(), clicked.clone()).scale(-1);
       // Spawn bundle

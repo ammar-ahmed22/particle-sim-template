@@ -13,8 +13,8 @@ class ECS<K, R> {
   private entities: Set<Entity> = new Set();
   private components: Map<Entity, K> = new Map();
   private systems: System<K, R>[] = [];
-  private resources?: R;
-  constructor(resources?: R) {
+  public resources: R;
+  constructor(resources: R) {
     this.resources = resources;
   }
 

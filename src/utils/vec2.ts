@@ -68,6 +68,15 @@ class Vec2 {
     return `{ x: ${this.x}, y: ${this.y} }`
   }
 
+  normalize(): Vec2 {
+    let mag = this.magnitude;
+    return this.div(mag);
+  }
+
+  get magnitude(): number {
+    return Vec2.Magnitude(this);
+  }
+
   static Add(a: Vec2, b: Vec2): Vec2 {
     return new Vec2(a.x + b.x, a.y + b.y);
   }
@@ -78,6 +87,14 @@ class Vec2 {
 
   static Dot(a: Vec2, b: Vec2): number {
     return (a.x * b.x) + (a.y * b.y);
+  }
+
+  static Magnitude(v: Vec2): number {
+    return Math.sqrt(v.x ** 2 + v.y ** 2);
+  }
+
+  static Distance(a: Vec2, b: Vec2): number {
+    return Vec2.Magnitude(Vec2.Subtract(a, b));
   }
 
 }

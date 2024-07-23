@@ -7,20 +7,18 @@ import Vec2 from "./utils/vec2";
 import Color from "./utils/color";
 import { SimulationResource } from "./systems";
 import { ParticleRenderSystem, AABBRenderSystem } from "./systems/render";
-import PhysicsSystem, { GravitySystem, ConstrainSystem } from "./systems/physics";
+import PhysicsSystem, { GravitySystem, ConstrainSystem, CollisionSystem } from "./systems/physics";
 import { SpawnParticlesSystem } from "./systems/spawn";
 import Particle from "./objects/particle";
 import CanvasTransformer from "./utils/transform";
 import AABB from "./objects/aabb";
 
-export type MouseState = {
-  clicked?: Vec2,
-  drag?: Vec2,
-  released?: Vec2
-}
 
-const mouseState: MouseState = {};
+
 const transformer = new CanvasTransformer();
+// Simulation handler
+const sim = new ECS<Renderable, SimulationResource>({ dt: 1 / 60, transformer, mouseState: {} });
+
 // Creating the Canvas
 const canvas = new ElementBuilder("canvas");
 canvas
@@ -35,15 +33,18 @@ canvas
     transformer.translate = mousePos.clone().sub(Vec2.Subtract(mousePos, transformer.translate).scale(zoomFactor))
   },
   mousedown: (e: MouseEvent) => {
+    const { mouseState } = sim.resources;
     mouseState.clicked = transformer.mousePos(e, canvas.element, { relativeTo: "transform" });
     mouseState.released = undefined;
   },
   mousemove: (e: MouseEvent) => {
+    const { mouseState } = sim.resources; 
     if (mouseState.clicked && !mouseState.released) {
       mouseState.drag = transformer.mousePos(e, canvas.element, { relativeTo: "transform" });
     }
   },
   mouseup: (e: MouseEvent) => {
+    const { mouseState } = sim.resources; 
     mouseState.released = transformer.mousePos(e, canvas.element, { relativeTo: "transform" });
     mouseState.drag = undefined;
   }
@@ -52,20 +53,18 @@ canvas
 
 // Handling resize
 window.addEventListener("resize", (_: UIEvent) => {
-  console.log("resize called");
   canvas.addAttributes({ width: window.innerWidth.toString(), height: window.innerHeight.toString() })
 })
 
 // Rendering handler
 const renderer = new Renderer(canvas.element);
-// Simulation handler
-const sim = new ECS<Renderable, SimulationResource>();
 
 
 sim.addSystems([
-  new SpawnParticlesSystem(), // Spawns particles
-  new GravitySystem(), // Adds gravity
+  new SpawnParticlesSystem(), // Spawns a bundle of particles
+  new GravitySystem(9.81), // Adds gravity
   new ConstrainSystem(), // Constrains to inside of AABB
+  new CollisionSystem({ elastic: true, restitution: 0.8 }), // Handles particle collisions
   new PhysicsSystem(), // Handles physics integrations
   new ParticleRenderSystem(), // Renders all particles
   new AABBRenderSystem() // Renders all AABBs
@@ -74,22 +73,13 @@ sim.addSystems([
 
 // Add resources to simulation
 const setupECS = (canvas: HTMLCanvasElement, graphics: Graphics) => {
-  sim.addResource({ graphics, dt: 1 / 60, transformer, mouseState });
+  sim.resources.graphics = graphics;
   sim.setup();
 }
 
-// Add a single particle to simulation
-const addParticle = (canvas: HTMLCanvasElement) => {
-  sim.createEntity(new Particle({
-    position: new Vec2(canvas.width / 2, canvas.height / 2),
-    radius: 10,
-    stroke: Color.WHITE,
-    strokeWidth: 1
-  }))
-}
 
 // Add setup systems to rendering
-renderer.addSystems("setup", [setupECS, addParticle]);
+renderer.addSystems("setup", [setupECS]);
 
 // Clear the screen and reset transform
 const clearScreen = (canvas: HTMLCanvasElement, graphics: Graphics) => {

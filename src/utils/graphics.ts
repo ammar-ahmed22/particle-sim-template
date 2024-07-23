@@ -42,6 +42,14 @@ class Graphics {
     if (opts) this.handleFillStroke(opts);
   }
 
+  line(start: Vec2, end: Vec2, opts?: FillStrokeOpts) {
+    this.ctx.beginPath();
+    this.ctx.moveTo(start.x, start.y);
+    this.ctx.lineTo(end.x, end.y);
+    if (opts) this.handleFillStroke(opts);
+    this.ctx.stroke();
+  }
+
 }
 
 export default Graphics;

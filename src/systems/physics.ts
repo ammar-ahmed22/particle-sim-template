@@ -31,6 +31,10 @@ class PhysicsSystem implements System<Renderable, SimulationResource> {
 }
 
 export class GravitySystem implements System<Renderable, SimulationResource> {
+  private g: number;
+  constructor(g?: number) {
+    this.g = g ?? 9.81;
+  }
   type: SystemType = 'update'
   filter(component: Renderable, resources: SimulationResource): boolean {
     return component instanceof Particle
@@ -39,7 +43,7 @@ export class GravitySystem implements System<Renderable, SimulationResource> {
   update(entities: number[], components: Map<number, Renderable>, ecs: ECS<Renderable, SimulationResource>, resources: SimulationResource): void {
     for (const entity of entities) {
       const particle = components.get(entity) as Particle;
-      particle.acceleration = new Vec2(0, 9.81);
+      particle.acceleration = new Vec2(0, this.g);
     }
   }
 }
@@ -79,6 +83,59 @@ export class ConstrainSystem implements System<Renderable, SimulationResource> {
             }
           }
         }
+      }
+    }
+  }
+}
+
+export class CollisionSystem implements System<Renderable, SimulationResource> {
+  private elastic: boolean;
+  private restitution: number;
+  constructor(opts?: { elastic?: boolean, restitution?: number}) {
+    this.elastic = opts?.elastic ?? false;
+    this.restitution = opts?.restitution ?? 1;
+  }
+  
+  type: SystemType = "update";
+  filter(component: Renderable, resources: SimulationResource): boolean {
+    return component instanceof Particle;
+  }
+
+  private elasticCollision(a: Particle, b: Particle, restitution: number = 1) {
+    let normal = Vec2.Subtract(a.position, b.position).normalize();
+    let relVel = Vec2.Subtract(a.velocity, b.velocity);
+    let colNormal = Vec2.Dot(relVel, normal);
+    if (colNormal > 0) {
+      return;
+    }
+    let aInvMass = 1 / a.mass;
+    let bInvMass = 1 / b.mass;
+    let impulseMag = (-(1 + restitution) * colNormal) / (aInvMass + bInvMass);
+    let impulse = normal.clone().scale(impulseMag);
+    a.velocity.add(impulse.clone().scale(aInvMass));
+    b.velocity.sub(impulse.clone().scale(bInvMass));
+  }
+
+  private intersection(a: Particle, b: Particle, opts?: { elastic?: boolean, restitution?: number }) {
+    const dist = Vec2.Distance(a.position.clone(), b.position.clone());
+    const combinedRadii = a.radius + b.radius;
+    if (dist < combinedRadii) {
+      const overlap = 0.5 * (combinedRadii - dist);
+      const n = Vec2.Subtract(a.position.clone(), b.position.clone()).div(dist);
+      a.position.add(n.clone().scale(overlap));
+      b.position.sub(n.clone().scale(overlap));
+      if (opts?.elastic) {
+        this.elasticCollision(a, b, opts.restitution);
+      }
+    }
+  }
+
+  update(entities: number[], components: Map<number, Renderable>, ecs: ECS<Renderable, SimulationResource>, resources: SimulationResource): void {
+    for (let i = 0; i < entities.length; i++) {
+      for (let j = i + 1; j < entities.length; j++) {
+        const a = components.get(entities[i]) as Particle;
+        const b = components.get(entities[j]) as Particle;
+        this.intersection(a, b, { elastic: this.elastic, restitution: this.restitution });
       }
     }
   }
