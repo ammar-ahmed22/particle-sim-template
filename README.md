@@ -11,7 +11,7 @@
 ### Running Locally
 **Clone the repo**:
 ```bash
-git clone <URL>
+git clone https://github.com/ammar-ahmed22/particle-sim-template.git
 ```
 
 **Change directory**:
